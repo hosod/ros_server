@@ -251,7 +251,7 @@ if __name__ == "__main__":
                     pub.publish(point_human)
                     x = point_human.point.x
                     y = point_human.point.y
-                    z = point_human.point.z
+                    z = point_human.point.z-0.3
 
                     # print(cam_obj_/list)
                     # x, y, z = cvt2camera(1.7, 0., 1.5, now)
