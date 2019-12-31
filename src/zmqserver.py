@@ -15,6 +15,7 @@ from geometry_msgs.msg import Pose, PoseStamped, PointStamped
 
 
 # parse zmq input from moverio and return list of camera Pose from view of each markers
+# 
 def parse_mtx(matrix_str):
     # print(str(matrix_str))
     matrix_str = matrix_str.split(';')
@@ -34,6 +35,7 @@ def parse_mtx(matrix_str):
     
     return pose_list
 
+# estimate camera pose from pose of single marker captured by camera
 def get_camera_pos(params):
     marker_id = str(int(params[0]))
     tvec = np.array(params[1:4])
@@ -77,7 +79,6 @@ def rod2quat(rod):
 def cvtPose2World(pose_list):
     world_pose_list = []
     for pose_camera in pose_list:
-
         try:
             now = rospy.Time.now()
             # pose_camera.header.stamp = now
@@ -103,9 +104,10 @@ def cvtPose2Map(pose_list):
     return map_pose_list
 
 # obj_list: list of PointStamped that mean Object Coordinates
+# translate map-frame position of object to camera-frame
 def __cvtObj2Camera(now):
     cam_obj_list = []
-    id_list = []
+    ht_id_list = []
 
     ht_msg = rospy.wait_for_message('/ht', HTEntityList)
     print('fuga')
@@ -121,12 +123,12 @@ def __cvtObj2Camera(now):
             listener.waitForTransform('camera', 'map', now, rospy.Duration(3.0))
             point_human_camera = listener.transformPoint('camera', point_human)
             cam_obj_list.append(point_human_camera)
-            id_list.append(human.id)
+            ht_id_list.append(human.id)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             print(e)
             continue
 
-    return cam_obj_list, id_list
+    return cam_obj_list, ht_id_list
 
 def points2str(point_list):
     return ''
@@ -218,11 +220,13 @@ if __name__ == "__main__":
             if cnt==0:
                 socket.send_string('404 '+str(x)+' '+str(y)+' '+str(z))
                 continue
-            # print(sum_translation)
-            # print(len(pose_list))
-            translation = sum_translation/cnt
-            norm = np.linalg.norm(sum_rotation, 2)
-            rotation = sum_rotation/norm
+            else:
+                # print(sum_translation)
+                # print(len(pose_list))
+                translation = sum_translation/cnt
+                norm = np.linalg.norm(sum_rotation, 2)
+                rotation = sum_rotation/norm
+
             if init_flag:
                 camera_position = translation
                 camera_orientation = rotation
