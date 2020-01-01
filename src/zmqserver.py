@@ -13,6 +13,14 @@ from layer2.msg import HTEntityList, HTEntity
 import numpy as np
 from geometry_msgs.msg import Pose, PoseStamped, PointStamped
 
+
+#-----------stop using this server-program------------
+#Because this program is legacy code and cannot use json message
+
+
+
+
+
 strategy_code = 0
 item_dic = {'icon':0,'lower':70000,'higher':100000}
 keywords = [{'word':'Windows','state':0}, {'word':'Mac','state':1}, {'word':'Office', 'state':1}]
