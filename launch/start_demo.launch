@@ -18,6 +18,6 @@
     <node pkg="tf" type="static_transform_publisher" name="marker0_broadcaster" args="1.2 -0.5 1.5 0 0 -1.5707963267948966 map marker0 100" />
     <node pkg="tf" type="static_transform_publisher" name="marker3_broadcaster" args="2.2 -0.5 1.5 0 0 -1.5707963267948966 map marker3 100" />
     <node pkg="tf" type="static_transform_publisher" name="marker4_broadcaster" args="2.6 -0.5 1.58 1.5707963267948966 0 -1.5707963267948966 map marker4 100" />
-    <node pkg="tf" type="static_transform_publisher" name="marker9_broadcaster" args="2.63 3.8 1.55 1.5707963267948966 0 -1.5707963267948966 map marker9 100" />
-    <node pkg="tf" type="static_transform_publisher" name="marker10_broadcaster" args="2.63 3.0 1.55 1.5707963267948966 0 -1.5707963267948966 map marker10 100" />
+    <node pkg="tf" type="static_transform_publisher" name="marker9_broadcaster" args="3.50 1.63 1.55 1.5707963267948966 0 -1.5707963267948966 map marker9 100" />
+    <node pkg="tf" type="static_transform_publisher" name="marker10_broadcaster" args="3.50 0.60 1.55 1.5707963267948966 0 -1.5707963267948966 map marker10 100" />
   </launch>

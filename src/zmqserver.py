@@ -310,7 +310,7 @@ if __name__ == "__main__":
         print(camera_position)
         msg = socket.recv_string(0)
         msg = msg.encode('utf-8')
-        # print(msg)
+        print(msg)
         # print(msg)
         msg_code, msg_body = parse_msg(msg)
         # print(msg_code,msg_body)
@@ -335,6 +335,7 @@ if __name__ == "__main__":
                 socket.send_string('404 no object is in field')
                     
         elif msg_code == '102': # update robot info
+                print(msg_body)
                 socket.send_string('404 not found')
         else:
             err_msg = '404 your message is not acceptable'

@@ -16,15 +16,22 @@ from geometry_msgs.msg import Pose, PoseStamped, PointStamped
 
 class zmq_server_object():
     def __init__(self,):
-        strategy_code = 0
-        item_dic = {'icon':0,'lower':70000,'higher':100000}
-        keywords = [{'word':'Windows','state':0}, {'word':'Mac','state':1}, {'word':'Office', 'state':1}]
-        position = {'x':0.,'y':0.,'z':1.0}
+        self.strategy_code = 0
+        self.item_dic = {'icon':0,'lower':70000,'higher':100000}
+        self.keywords = [{'word':'Windows','positive':0}, {'word':'Mac','positive':1}, {'word':'Office', 'positive':1}]
+        self.position = {'x':0.,'y':0.,'z':1.0}
         self.sales_info = {
-            'strategy_code':strategy_code,
-            'item':item_dic,
-            'keywords':keywords,
-            'position':position
+            'strategy_code':self.strategy_code,
+            'item':self.item_dic,
+            'keywords':self.keywords,
+            'position':self.position
+        }
+
+        self.sales_data = {
+            'state':0,
+            'item':{'id':0,'name':'sugoi computer','price':98000},
+            'keywords':['notePC', 'Windows','office'],
+            'position':{'x':0.,'y':0.,'z':1.0}
         }
         self.robot_info = {
             'statusCode':0,
@@ -46,8 +53,9 @@ class zmq_server_object():
     def parse_msg(self, msg):
         msg_list = msg.split(';')
         msg_list = map(str.split, msg_list)
-
+        
         msg_code = msg_list[0][0]
+        
         msg_body = msg_list[1:]
 
         return msg_code, msg_body
@@ -173,6 +181,7 @@ class zmq_server_object():
         else:
             tf_flag = False
             return tf_flag, rospy.Time.now()
+
     def cvt_object2camera(self, now):
         cam_object_list = []
         ht_id_list = []
@@ -182,7 +191,8 @@ class zmq_server_object():
             point_human.header.frame_id = human.header.frame_id
             point_human.point.x = human.x
             point_human.point.y = human.y
-            point_human.point.z = human.z
+            # point_human.point.z = human.z + 0.5
+            point_human.point.z = 1.2
             point_human.header.stamp = now
             try:
                 self.listener.waitForTransform('camera','map',now,rospy.Duration(3.0))
@@ -193,6 +203,24 @@ class zmq_server_object():
                 print(e)
                 continue
         return cam_object_list, ht_id_list
+    
+    def update_sale_info(self,params):
+        self.sales_info['strategy_code'] = int(params[0])
+        self.item_dic['icon'] = int(params[1])
+        self.item_dic['lower'] = int(params[2])
+        self.item_dic['higher'] = int(params[3])
+        param_keywords = params[4:]
+        keywords = []
+        for i in range(len(param_keywords)/2):
+            word = param_keywords[i*2]
+            positive = int(param_keywords[i*2+1])
+            keywords.append({'word':word,'positive':positive})
+        self.sales_info['keywords'] = keywords
+
+    def update_position(self,x,y,z):
+        self.sales_info['position']['x'] = x
+        self.sales_info['position']['y'] = y
+        self.sales_info['position']['z'] = z
     
 
 if __name__ == "__main__":
@@ -222,12 +250,16 @@ if __name__ == "__main__":
                 server.robot_info['position']['x'] = x
                 server.robot_info['position']['y'] = y
                 server.robot_info['position']['z'] = z
-                socket.send_string(json.dumps(server.json_dic))
+                server.update_position(x,y,z)
+                socket.send_string(json.dumps(server.sales_info))
             else:
                 socket.send_string('404 no object is in field')
 
         elif msg_code=='102':#update sales info
-            socket.send_string('404 not found')
+            # print(msg_body[0])
+            server.update_sale_info(msg_body[0])
+            socket.send_string(json.dumps(server.sales_info))
+            print(json.dumps(server.sales_info))
         else:
             err_msg = '404 your message is not acceptable'
             print(err_msg)
