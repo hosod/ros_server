@@ -16,19 +16,19 @@ from geometry_msgs.msg import Pose, PoseStamped, PointStamped
 
 class zmq_server_object():
     def __init__(self,):
-        self.strategy_code = 0
-        self.item_dic = {'icon':0,'lower':70000,'higher':100000}
-        self.keywords = [{'word':'Windows','positive':0}, {'word':'Mac','positive':1}, {'word':'Office', 'positive':1}]
-        self.position = {'x':0.,'y':0.,'z':1.0}
-        self.sales_info = {
-            'strategy_code':self.strategy_code,
-            'item':self.item_dic,
-            'keywords':self.keywords,
-            'position':self.position
-        }
+        # self.strategy_code = 0
+        # self.item_dic = {'icon':0,'lower':70000,'higher':100000}
+        # self.keywords = [{'word':'Windows','positive':0}, {'word':'Mac','positive':1}, {'word':'Office', 'positive':1}]
+        # self.position = {'x':0.,'y':0.,'z':1.0}
+        # self.sales_info = {
+        #     'strategy_code':self.strategy_code,
+        #     'item':self.item_dic,
+        #     'keywords':self.keywords,
+        #     'position':self.position
+        # }
 
-        self.sales_data = {
-            'state':0,
+        self.sales_info = {
+            'state':1,
             'item':{'id':0,'name':'sugoi computer','price':98000},
             'keywords':['notePC', 'Windows','office'],
             'position':{'x':0.,'y':0.,'z':1.0}
@@ -49,6 +49,7 @@ class zmq_server_object():
         self.camera_position = np.zeros(3)
         self.camera_orientation = np.zeros(4)
         self.alpha = 0.5
+        self.prev_time = -1
 
     def parse_msg(self, msg):
         msg_list = msg.split(';')
@@ -127,10 +128,12 @@ class zmq_server_object():
                         continue
                 sum_translation = sum_translation + tmp_translation
                 sum_rotation = sum_rotation + tmp_rotation
+
                 cnt+=1
             if cnt==0:
                 return False, np.zeros(3),np.zeros(4)
             else:
+                print(cnt)
                 translation = sum_translation / cnt
                 norm = np.linalg.norm(sum_rotation, 2)
                 rotation = sum_rotation / norm
@@ -141,9 +144,10 @@ class zmq_server_object():
     def low_pass_filter(self, trans, rot):
         alpha = self.alpha
         self.camera_position = alpha*self.camera_position + (1-alpha)*trans
-        self.camera_orientation = alpha*self.camera_orientation + (1-alpha)*rot
-        norm = np.linalg.norm(self.camera_orientation)
-        self.camera_orientation = self.camera_orientation / norm
+        self.camera_orientation = rot
+        tmp = tf.transformations.euler_from_quaternion(self.camera_orientation)
+        print(tmp[0]*180.0/math.pi, tmp[1]*180.0/math.pi, tmp[2]*180.0/math.pi)
+
 
 
 
@@ -154,8 +158,12 @@ class zmq_server_object():
         pose_list = self.cvt_pose2map(pose_list)
         # wanna get camera position in map-frame
         suc_flag,trans,rot = self.integrate_camera_pose(pose_list)
+        
 
         if suc_flag:
+            # tmp = tf.transformations.euler_from_quaternion(rot)
+            # print(tmp[0]*180.0/math.pi, tmp[1]*180.0/math.pi, tmp[2]*180.0/math.pi)
+
             if self.init_flag:
                 self.camera_position = trans
                 self.camera_orientation = rot
@@ -186,41 +194,104 @@ class zmq_server_object():
         cam_object_list = []
         ht_id_list = []
         ht_msg = rospy.wait_for_message('/ht', HTEntityList)
-        for human in ht_msg.list:
-            point_human = PointStamped()
-            point_human.header.frame_id = human.header.frame_id
-            point_human.point.x = human.x
-            point_human.point.y = human.y
-            # point_human.point.z = human.z + 0.5
-            point_human.point.z = 1.2
-            point_human.header.stamp = now
-            try:
-                self.listener.waitForTransform('camera','map',now,rospy.Duration(3.0))
-                point_human_camera = self.listener.transformPoint('camera',point_human)
-                cam_object_list.append(point_human_camera)
-                ht_id_list.append(human.id)
-            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-                print(e)
-                continue
+
+        point_human = PointStamped()
+        point_human.header.frame_id = 'map'
+        point_human.point.x = 3.1
+        point_human.point.y = 0.13
+        point_human.point.z = 1.3
+        point_human.header.stamp = now
+        try:
+            self.listener.waitForTransform('camera','map',now,rospy.Duration(3.0))
+            point_human_camera = self.listener.transformPoint('camera',point_human)
+            cam_object_list.append(point_human_camera)
+            # ht_id_list.append(human.id)
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+            print(e)
+        
+        # for human in ht_msg.list:
+        #     point_human = PointStamped()
+        #     point_human.header.frame_id = human.header.frame_id
+        #     # point_human.point.x = human.x
+        #     # point_human.point.y = human.y
+        #     # point_human.point.z = human.z + 0.5
+        #     point_human.point.x = 3.1
+        #     point_human.point.y = 0.13
+        #     point_human.point.z = 1.3
+        #     point_human.header.stamp = now
+        #     try:
+        #         self.listener.waitForTransform('camera','map',now,rospy.Duration(3.0))
+        #         point_human_camera = self.listener.transformPoint('camera',point_human)
+        #         cam_object_list.append(point_human_camera)
+        #         ht_id_list.append(human.id)
+        #     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+        #         print(e)
+        #         continue
+        
         return cam_object_list, ht_id_list
     
     def update_sale_info(self,params):
-        self.sales_info['strategy_code'] = int(params[0])
-        self.item_dic['icon'] = int(params[1])
-        self.item_dic['lower'] = int(params[2])
-        self.item_dic['higher'] = int(params[3])
-        param_keywords = params[4:]
-        keywords = []
-        for i in range(len(param_keywords)/2):
-            word = param_keywords[i*2]
-            positive = int(param_keywords[i*2+1])
-            keywords.append({'word':word,'positive':positive})
-        self.sales_info['keywords'] = keywords
+        self.sales_info['state'] = int(params[0])
+        self.sales_info['item']['id'] = int(params[1])
+        self.sales_info['item']['name'] = params[2]
+        self.sales_info['item']['price'] = int(params[3])
+        param_kw = params[4:]
+        kw = []
+        for i in range(len(param_kw)):
+            kw.append(param_kw[i])
+        self.sales_info['keywords'] = kw
+        # self.item_dic['icon'] = int(params[1])
+        # self.item_dic['lower'] = int(params[2])
+        # self.item_dic['higher'] = int(params[3])
+        # param_keywords = params[4:]
+        # keywords = []
+        # for i in range(len(param_keywords)/2):
+        #     word = param_keywords[i*2]
+        #     positive = int(param_keywords[i*2+1])
+        #     keywords.append({'word':word,'positive':positive})
+        # self.sales_info['keywords'] = keywords
 
     def update_position(self,x,y,z):
         self.sales_info['position']['x'] = x
         self.sales_info['position']['y'] = y
         self.sales_info['position']['z'] = z
+
+    def onGyroChanged(self,params):
+        x,y,z = params[0:3]
+        x = float(x)
+        y = -float(y)
+        z = -float(z)
+        time = float(params[3])
+        t_delta = 0
+        if self.prev_time>0:
+            t_delta = time-self.prev_time /1000000000
+        else:
+            self.prev_time = time
+            return '404'
+        g_rot = tf.transformations.quaternion_from_euler(
+            x*t_delta,
+            y*t_delta,
+            z*t_delta)
+        rot_tmp = tf.transformations.quaternion_multiply(self.camera_orientation,g_rot)
+        # self.camera_orientation = self.alpha*self.camera_orientation + (1-self.alpha)*rot_tmp
+        # self.camera_orientation = self.camera_orientation / np.linalg.norm(self.camera_orientation)
+        now = rospy.Time.now()
+        self.br.sendTransform(
+            tuple(self.camera_position),
+            tuple(self.camera_orientation),
+            now,
+            'camera',
+            'map'
+        )
+        cam_human_list,_ = server.cvt_object2camera(now)
+        human = cam_human_list[0]     
+        x = human.point.x
+        y = human.point.y
+        z = human.point.z
+        return '{} {} {}'.format(x,y,z)
+        
+        
+
     
 
 if __name__ == "__main__":
@@ -236,6 +307,7 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         msg = socket.recv_string(0)
         msg = msg.encode('utf-8')
+        # print(msg)
 
         msg_code, msg_body = server.parse_msg(msg)
         if msg_code=='101':#camera localization
@@ -247,9 +319,9 @@ if __name__ == "__main__":
                 x = human.point.x
                 y = human.point.y
                 z = human.point.z
-                server.robot_info['position']['x'] = x
-                server.robot_info['position']['y'] = y
-                server.robot_info['position']['z'] = z
+                # server.robot_info['position']['x'] = x
+                # server.robot_info['position']['y'] = y
+                # server.robot_info['position']['z'] = z
                 server.update_position(x,y,z)
                 socket.send_string(json.dumps(server.sales_info))
             else:
@@ -260,6 +332,14 @@ if __name__ == "__main__":
             server.update_sale_info(msg_body[0])
             socket.send_string(json.dumps(server.sales_info))
             print(json.dumps(server.sales_info))
+        elif msg_code=='103':
+            if server.init_flag:
+                print('hoge')
+                socket.send_string('404')
+            else:
+                msg = server.onGyroChanged(msg_body[0])
+                socket.send_string(msg)
+                print(msg)
         else:
             err_msg = '404 your message is not acceptable'
             print(err_msg)
