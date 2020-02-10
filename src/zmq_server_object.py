@@ -51,6 +51,11 @@ class zmq_server_object():
         self.alpha = 0.5
         self.prev_time = -1
 
+        self.robots = [
+            (3.1,0.13,1.4),
+            (3.0, 2.50,1.4)
+        ]
+
     def parse_msg(self, msg):
         msg_list = msg.split(';')
         msg_list = map(str.split, msg_list)
@@ -193,7 +198,20 @@ class zmq_server_object():
     def cvt_object2camera(self, now):
         cam_object_list = []
         ht_id_list = []
-        ht_msg = rospy.wait_for_message('/ht', HTEntityList)
+        # ht_msg = rospy.wait_for_message('/ht', HTEntityList)
+
+        # for pt_robot in self.robots:
+        #     point_human = PointStamped()
+        #     point_human.header.frame_id = 'map'
+        #     point_human.point.x = pt_robot[0]
+        #     point_human.point.y = pt_robot[1]
+        #     point_human.point.z = pt_robot[2]
+        #     try:
+        #         self.listener.waitForTransform('camera', 'map', now, rospy.Duration(2.0))
+        #         point_human_camera = self.listener.transformPoint('camera', point_human)
+        #         cam_object_list.append(point_human_camera)
+        #     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+        #     print(e)
 
         point_human = PointStamped()
         point_human.header.frame_id = 'map'
@@ -227,6 +245,7 @@ class zmq_server_object():
         #     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
         #         print(e)
         #         continue
+        # interface 
         
         return cam_object_list, ht_id_list
     
